@@ -27,9 +27,6 @@ function Composer(
         maxLines,
         isComposerFullSize = false,
         style,
-        // On native layers we like to have the Text Input not focused so the
-        // user can read new chats without the keyboard in the way of the view.
-        // On Android the selection prop is required on the TextInput but this prop has issues on IOS
         selection,
         value,
         isGroupPolicyReport = false,
@@ -49,37 +46,28 @@ function Composer(
             return;
         }
 
-        // We need the delay for setSelection to properly work for IOS in bridgeless mode due to a react native
-        // internal bug of dispatching the event before the component is ready for it.
-        // (see https://github.com/Expensify/App/pull/50520#discussion_r1861960311 for more context)
+        // Preserve cursor position before setting selection
+        const currentCursorPos = selection.start;
+
+        // Use a small delay for proper cursor handling on iOS
         const timeoutID = setTimeout(() => {
-            // We are setting selection twice to trigger a scroll to the cursor on toggling to smaller composer size.
-            textInput.current?.setSelection((selection.start || 1) - 1, selection.start);
-            textInput.current?.setSelection(selection.start, selection.start);
+            textInput.current?.setSelection(currentCursorPos, currentCursorPos);
         }, 0);
 
         return () => clearTimeout(timeoutID);
 
-        // eslint-disable-next-line react-compiler/react-compiler, react-hooks/exhaustive-deps
-    }, [isComposerFullSize]);
+    }, [selection, isComposerFullSize]);
 
     /**
      * Set the TextInput Ref
      * @param {Element} el
      */
     const setTextInputRef = useCallback((el: AnimatedMarkdownTextInputRef) => {
-        // eslint-disable-next-line react-compiler/react-compiler
         textInput.current = el;
         if (typeof ref !== 'function' || textInput.current === null) {
             return;
         }
-
-        // This callback prop is used by the parent component using the constructor to
-        // get a ref to the inner textInput element e.g. if we do
-        // <constructor ref={el => this.textInput = el} /> this will not
-        // return a ref to the component, but rather the HTML element by default
         ref(textInput.current);
-        // eslint-disable-next-line react-compiler/react-compiler, react-hooks/exhaustive-deps
     }, []);
 
     const onClear = useCallback(
@@ -123,7 +111,6 @@ function Composer(
             textAlignVertical="center"
             style={[composerStyle, maxHeightStyle]}
             markdownStyle={markdownStyle}
-            /* eslint-disable-next-line react/jsx-props-no-spreading */
             {...props}
             readOnly={isDisabled}
             onPaste={pasteFile}
